@@ -1,0 +1,74 @@
+Data Source
+The source data are from the Human Activity Recognition Using Smartphones Data Set. 
+A full description is available at the site where the data was obtained: http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones. 
+Here are the data for the project: https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip
+
+Step by Step Discription of R script
+1. Downloading and Cleaning the Data:
+   A. Create a directory where the data is to be stored
+   B. Create a URL named vector with the URL address
+   C. Use the download.file function to download the file. Ensure that you use mode = wb - ensure binary data is received
+   D. Use the unzip command and store the unzipped data into another directory
+   E. Keep track of the path to use it for creating other vectors
+   
+>library("data.table")
+>fileUrl1 <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+>destfile1 <- "/Users/rwang10/Desktop/test3/getting and cleaning data/week4/dataset.zip"
+>download.file(fileUrl1, destfile1, method = "curl")
+>unzip(zipfile = "/Users/rwang10/Desktop/test3/getting and cleaning data/week4/dataset.zip", 
+      exdir= "/Users/rwang10/Desktop/test3/getting and cleaning data/week4_project")
+
+>pathdata <- file.path("/Users/rwang10/Desktop/test3/getting and cleaning data/week4_project", "UCI HAR Dataset")
+>files <- list.files(pathdata, recursive=TRUE)
+
+2. Go through the Data You Have 
+In the data the readme.me document in the folder "UCI HAR Dataset", there is a detailed perspective of what to expect and how to manipulate the data. Here are three core variables:
+
+   A. Main, activity_labels, Inertial Signals 
+   B. Test, features, subject_test, subject_train 
+   C. Train, features.info, X_test, X_train
+Inertial Signal data is not required. 
+Additionally, features and activity label are more for tagging and descriptive than data sets.
+
+3. Making the Test and Training Set Data
+   A. reading tables
+>xtrain <- read.table(file.path(pathdata, "train", "X_train.txt"),header = FALSE)
+>ytrain <- read.table(file.path(pathdata, "train", "y_train.txt"),header = FALSE)
+>subject_train <- read.table(file.path(pathdata, "train", "subject_train.txt"),header = FALSE)
+>xtest <- read.table(file.path(pathdata, "test", "X_test.txt"),header = FALSE)
+>ytest <- read.table(file.path(pathdata, "test", "y_test.txt"),header = FALSE)
+>subject_test <- read.table(file.path(pathdata, "test", "subject_test.txt"),header = FALSE)
+>features <- read.table(file.path(pathdata, "features.txt"),header = FALSE)
+>activityLabels <- read.table(file.path(pathdata, "activity_labels.txt"),header = FALSE)
+
+4. Tagging the test and train data sets
+>colnames(xtrain) <- features[,2]
+>colnames(ytrain) <- c("activityId")
+>colnames(subject_train) <- c("subjectId")
+>colnames(xtest) <- features[,2]
+>colnames(ytest) <- c("activityId")
+>colnames(subject_test) <- c("subjectId")
+>colnames(activityLabels) <- c("activityId", "activityType")
+
+5. merge the test and train data 
+>merge_train <- cbind(ytrain, subject_train, xtrain)
+>merge_test <- cbind(ytest, subject_test, xtest)
+>train_n_test <- rbind(merge_test, merge_train)
+
+6. Extracting only the measurements on the mean and standard deviation for each measurement
+>colNames <- colnames(train_n_test)
+>mean_n_std <- (grepl("activityId" , colNames) | grepl("subjectId" , colNames) | grepl("mean.." , colNames) | grepl("std.." , colNames))
+>mean_n_std_of_train_n_test <- train_n_test[, mean_n_std == TRUE]
+
+7. Use descriptive activity names to name the activities in the data set
+>discriptiveNames <- merge(mean_n_std_of_train_n_test, activityLabels, by = "activityId", all = TRUE)
+
+8. From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject
+>Tidydata <- aggregate(. ~subjectId + activityId, mean_n_std_of_train_n_test, mean)
+>TidyMnSofTnT <- Tidydata[order(Tidydata$subjectId, Tidydata$activityId),]
+>write.table(TidyMnSofTnT, "/Users/rwang10/Desktop/test3/getting and cleaning data/week4_project/TidySet.txt", row.name=FALSE)
+
+About variables:
+xtrain, ytrain, xtest, ytest, subject_train and subject_test contain the data from the downloaded files.
+merge_train, merge_test and train_n_test merge the previous datasets to further analysis.
+features contains the correct names for the xtrain and xtest dataset, which are applied to the column names stored in.
